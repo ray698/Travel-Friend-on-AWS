@@ -1,0 +1,14 @@
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash
+            sudo yum -y update
+            sudo amazon-linux-extras install epel -y
+            sudo yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+            sudo systemctl reboot
+            sudo yum install -y httpd
+            sudo systemctl start httpd
+            sudo systemctl enable httpd
+            sudo yum install ansible -y
+            sudo ansible-galaxy collection install ansible.posix
+            sudo yum -y install putty
+            sudo yum -y install vim bash-completion

@@ -1,0 +1,13 @@
+---
+  - hosts: all
+    gather_facts: no
+    tasks :
+     - name: Lynis security audit playbook (install)
+       yum: name=lynis state=present
+     - name: Audit Scan the system
+       shell: lynis audit system > /tmp/lynis-output.log
+     - name: Downloading report locally
+       fetch:
+        src: "/tmp/lynis-output.log"
+        dest: "./tmp/lynis-output.log"
+        flat: yes

@@ -1,0 +1,38 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Travel_Friend_User",
+    "Resources": {
+        "FTUser": {
+            "Type": "AWS::IAM::User",
+            "Properties": {
+                "Path": "/",
+                "LoginProfile": {
+                    "Password": "P@$$w0rd"
+                },
+                "UserName": "FTUser"
+                }
+            },
+        "AdminPolicy": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "*",
+                            "Resource": "*"
+                        }
+                    ]
+                },
+                "PolicyName": "Admin",
+                "Users": [
+                    {
+                        "Ref": "FTUser"
+                    }
+                ]
+            }
+        }   
+    }             
+}     
+

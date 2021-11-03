@@ -1,0 +1,12 @@
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash
+            sudo yum -y update
+            sudo amazon-linux-extras install epel -y
+            sudo yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+            sudo systemctl reboot
+            sudo yum install -y httpd
+            sudo systemctl start httpd
+            sudo systemctl enable httpd
+            sudo rpm -ivh http://repo.zabbix.com/zabbix/5.0/rhel/7/x86_64/zabbix-agent-5.0.3-1.el7.x86_64.rpm
+            sudo yum localinstall http://repo.zabbix.com/zabbix/5.0/rhel/7/x86_64/zabbix-agent-5.0.3-1.el7.x86_64.rpm

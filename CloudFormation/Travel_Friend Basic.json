@@ -1,0 +1,958 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Travel Friend Bascic",
+    "Parameters": {
+        "AmazonLinuxAMIID": {
+            "Type": "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
+            "Default": "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+        },
+        "VPCCIDR": {
+            "Description": "CIDR Block for VPC",
+            "Type": "String",
+            "MinLength": "9",
+            "MaxLength": "18",
+            "Default": "10.5.0.0/16",
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+        },
+        "PublicSubnet1Param": {
+            "Description": "Public Subnet 1",
+            "Type": "String",
+            "MinLength": "9",
+            "MaxLength": "18",
+            "Default": "10.5.10.0/24",
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+        },
+        "PrivateSubnet1Param": {
+            "Description": "Private Subnet 1",
+            "Type": "String",
+            "MinLength": "9",
+            "MaxLength": "18",
+            "Default": "10.5.50.0/24",
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+        },
+        "PrivateSubnet3Param": {
+            "Description": "Private Subnet 3",
+            "Type": "String",
+            "MinLength": "9",
+            "MaxLength": "18",
+            "Default": "10.5.60.0/24",
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+        },
+        "PublicSubnet2Param": {
+            "Description": "Public Subnet 2",
+            "Type": "String",
+            "MinLength": "9",
+            "MaxLength": "18",
+            "Default": "10.5.20.0/24",
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+        },
+        "PrivateSubnet2Param": {
+            "Description": "Private Subnet 2",
+            "Type": "String",
+            "MinLength": "9",
+            "MaxLength": "18",
+            "Default": "10.5.100.0/24",
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+        },
+        "PrivateSubnet4Param": {
+            "Description": "Private Subnet 4",
+            "Type": "String",
+            "MinLength": "9",
+            "MaxLength": "18",
+            "Default": "10.5.110.0/24",
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+        },
+        "KeyName": {
+            "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+            "Type": "AWS::EC2::KeyPair::KeyName",
+            "ConstraintDescription": "must be the name of an existing EC2 KeyPair."
+        },
+        "DBName": {
+            "Default": "RDSDatabase",
+            "Description" : "The database name",
+            "Type": "String",
+            "MinLength": "1",
+            "MaxLength": "64",
+            "AllowedPattern" : "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription" : "must begin with a letter and contain only alphanumeric characters."
+        },
+        "DBUser": {
+            "NoEcho": "true",
+            "Description" : "The database admin account username",
+            "Type": "String",
+            "MinLength": "1",
+            "MaxLength": "16",
+            "AllowedPattern" : "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription" : "must begin with a letter and contain only alphanumeric characters."
+        },
+        "DBPassword": {
+            "NoEcho": "true",
+            "Description" : "The database admin account password",
+            "Type": "String",
+            "MinLength": "1",
+            "MaxLength": "41",
+            "AllowedPattern" : "[a-zA-Z0-9]+",
+            "ConstraintDescription" : "must contain only alphanumeric characters."
+        },
+        "DBAllocatedStorage": {
+            "Default": "5",
+            "Description" : "The size of the database (Gb)",
+            "Type": "Number",
+            "MinValue": "5",
+            "MaxValue": "1024",
+            "ConstraintDescription" : "ust be between 5 and 1024Gb."
+        },
+        "DBInstanceClass": {
+            "Description" : "The database instance type",
+            "Type": "String",
+            "Default": "db.t2.micro",
+            "AllowedValues" : [ "db.t1.micro", "db.m1.small", "db.m1.medium", "db.m1.large", "db.m1.xlarge", "db.m2.xlarge", "db.m2.2xlarge", "db.m2.4xlarge", "db.m3.medium", "db.m3.large", "db.m3.xlarge", "db.m3.2xlarge", "db.m4.large", "db.m4.xlarge", "db.m4.2xlarge", "db.m4.4xlarge", "db.m4.10xlarge", "db.r3.large", "db.r3.xlarge", "db.r3.2xlarge", "db.r3.4xlarge", "db.r3.8xlarge", "db.m2.xlarge", "db.m2.2xlarge", "db.m2.4xlarge", "db.cr1.8xlarge", "db.t2.micro", "db.t2.small", "db.t2.medium", "db.t2.large"]
+      ,
+        "ConstraintDescription" : "must select a valid database instance type."
+        },
+        "EC2SecurityGroup": {
+            "Description" : "The EC2 security group that contains instances that need access to the database",
+            "Default": "default",
+            "Type": "String",
+            "AllowedPattern" : "[a-zA-Z0-9\\-]+",
+            "ConstraintDescription" : "must be a valid security group name."
+        },
+        "MultiAZ" : {
+            "Description" : "Multi-AZ master database",
+            "Type" : "String",
+            "Default" : "true",
+            "AllowedValues" : [ "true", "false" ],
+            "ConstraintDescription" : "must be true or false."
+        }
+    },
+    "Conditions" : {
+        "Is-EC2-VPC"     : { "Fn::Or" : [ {"Fn::Equals" : [{"Ref" : "AWS::Region"}, "eu-central-1" ]},
+                                            {"Fn::Equals" : [{"Ref" : "AWS::Region"}, "ap-northeast-2" ]}]},
+        "Is-EC2-Classic" : { "Fn::Not" : [{ "Condition" : "Is-EC2-VPC"}]}
+    },
+    "Resources": {
+        "VPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": {
+                    "Ref": "VPCCIDR"
+                },
+                "EnableDnsSupport": true,
+                "EnableDnsHostnames": true,
+                "Tags": [
+                    {
+                        "Key": "VPC",
+                        "Value": "NAT-and-CLI"
+                    },
+                    {
+                        "Key": "Name",
+                        "Value": "FT VPC"
+                    }
+                ]
+            }
+        },
+        "InternetGateway": {
+            "Type": "AWS::EC2::InternetGateway",
+            "DependsOn": "VPC"
+        },
+        "AttachGateway": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "DependsOn": [
+                "VPC",
+                "InternetGateway"
+            ],
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "InternetGatewayId": {
+                    "Ref": "InternetGateway"
+                }
+            }
+        },
+        "EIP" : {
+            "Type": "AWS::EC2::EIP"
+        },
+        "EIP2" : {
+            "Type": "AWS::EC2::EIP"
+        },
+        "NATGateway" : {
+            "Type": "AWS::EC2::NatGateway",
+            "DependsOn": "AttachGateway",
+            "Properties": {
+                "AllocationId": { "Fn::GetAtt" : ["EIP", "AllocationId"]},
+                "SubnetId": {
+                    "Ref": "PublicSubnet1"
+                }
+            }
+        },
+        "NATGateway2" : {
+            "Type": "AWS::EC2::NatGateway",
+            "DependsOn": "AttachGateway",
+            "Properties": {
+                "AllocationId": { "Fn::GetAtt" : ["EIP2", "AllocationId"]},
+                "SubnetId": {
+                    "Ref": "PublicSubnet2"
+                }
+            }
+        },
+        "PublicSubnet1": {
+            "Type": "AWS::EC2::Subnet",
+            "DependsOn": "AttachGateway",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "CidrBlock": {
+                    "Ref": "PublicSubnet1Param"
+                },
+                "MapPublicIpOnLaunch": true,
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "0",
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Public Subnet 1"
+                    }
+                ]
+            }
+        },
+        "PublicSubnet2": {
+            "Type": "AWS::EC2::Subnet",
+            "DependsOn": "AttachGateway",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "CidrBlock": {
+                    "Ref": "PublicSubnet2Param"
+                },
+                "MapPublicIpOnLaunch": true,
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "2",
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Public Subnet 2"
+                    }
+                ]
+            }
+        },
+        "PrivateSubnet1": {
+            "Type": "AWS::EC2::Subnet",
+            "DependsOn": "AttachGateway",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "CidrBlock": {
+                    "Ref": "PrivateSubnet1Param"
+                },
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "0",
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Private Subnet 1"
+                    }
+                ]
+            }
+        },
+        "PrivateSubnet3": {
+            "Type": "AWS::EC2::Subnet",
+            "DependsOn": "AttachGateway",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "CidrBlock": {
+                    "Ref": "PrivateSubnet3Param"
+                },
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "0",
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Private Subnet 3"
+                    }
+                ]
+            }
+        },
+        "PrivateSubnet2": {
+            "Type": "AWS::EC2::Subnet",
+            "DependsOn": "AttachGateway",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "CidrBlock": {
+                    "Ref": "PrivateSubnet2Param"
+                },
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "2",
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Private Subnet 2"
+                    }
+                ]
+            }
+        },
+        "PrivateSubnet4": {
+            "Type": "AWS::EC2::Subnet",
+            "DependsOn": "AttachGateway",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "CidrBlock": {
+                    "Ref": "PrivateSubnet4Param"
+                },
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        "2",
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Private Subnet 4"
+                    }
+                ]
+            }
+        },
+        "PublicRouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "DependsOn": [
+                "VPC",
+                "AttachGateway"
+            ],
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Public"
+                    }
+                ]
+            }
+        },
+        "PublicRoute": {
+            "Type": "AWS::EC2::Route",
+            "DependsOn": [
+                "PublicRouteTable",
+                "AttachGateway"
+            ],
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PublicRouteTable"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "InternetGateway"
+                }
+            }
+        },
+        "PublicSubnet1RouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "DependsOn": [
+                "PublicRouteTable",
+                "PublicSubnet1",
+                "AttachGateway"
+            ],
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "PublicSubnet1"
+                },
+                "RouteTableId": {
+                    "Ref": "PublicRouteTable"
+                }
+            }
+        },
+        "PublicSubnet2RouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "DependsOn": [
+                "PublicRouteTable",
+                "PublicSubnet2",
+                "AttachGateway"
+            ],
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "PublicSubnet2"
+                },
+                "RouteTableId": {
+                    "Ref": "PublicRouteTable"
+                }
+            }
+        },
+        "PrivateRouteTable1": {
+            "Type": "AWS::EC2::RouteTable",
+            "DependsOn": "VPC",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Private1"
+                    }
+                ]
+            }
+        },
+        "PrivateRouteTable2": {
+            "Type": "AWS::EC2::RouteTable",
+            "DependsOn": "VPC",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Private2"
+                    }
+                ]
+            }
+        },
+        "PrivatecRoute1": {
+            "Type": "AWS::EC2::Route",
+            "DependsOn": [
+                "PrivateRouteTable1",
+                "AttachGateway"
+            ],
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PrivateRouteTable1"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "NatGatewayId": {
+                    "Ref": "NATGateway"
+                }
+            }
+        },    
+        "PrivatecRoute2": {
+            "Type": "AWS::EC2::Route",
+            "DependsOn": [
+                "PrivateRouteTable2",
+                "AttachGateway"
+            ],
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PrivateRouteTable2"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "NatGatewayId": {
+                    "Ref": "NATGateway2"
+                }
+            }
+        },     
+        "PrivateSubnet1RouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "DependsOn": "PrivateRouteTable1",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "PrivateSubnet1"
+                },
+                "RouteTableId": {
+                    "Ref": "PrivateRouteTable1"
+                }
+            }
+        },
+        "PrivateSubnet2RouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "DependsOn": "PrivateRouteTable2",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "PrivateSubnet2"
+                },
+                "RouteTableId": {
+                    "Ref": "PrivateRouteTable2"
+                }
+            }
+        },
+        "PrivateNetworkAcl": {
+            "Type": "AWS::EC2::NetworkAcl",
+            "DependsOn": "AttachGateway",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Network",
+                        "Value": "Private"
+                    }
+                ]
+            }
+        },
+        "CommandHostSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "DependsOn": "AttachGateway",
+            "Properties": {
+                "GroupDescription": "Security Group for Command Host",
+                "GroupName": "CommandHostSecurityGroup",
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "CommandHostSecurityGroup"
+                    }
+                ],
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 22,
+                        "ToPort": 22,
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ]
+            }
+        },
+        "HTTPAccess": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Allow HTTP access to client.",
+                "GroupName": "HTTPAccess",
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "HTTPAccess"
+                    }
+                ],
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 80,
+                        "ToPort": 80,
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 443,
+                        "ToPort": 443,
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 22,
+                        "ToPort": 22,
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ]
+            }
+        },
+        "BastionHost": {
+            "Type": "AWS::EC2::Instance",
+            "DependsOn": [
+                "PublicSubnet1",
+                "CommandHostSecurityGroup",
+                "AttachGateway"
+            ],
+            "Properties": {
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "ImageId": {
+                    "Ref": "AmazonLinuxAMIID"
+                },
+                "InstanceType": "t2.micro",
+                "NetworkInterfaces": [
+                    {
+                        "DeviceIndex": "0",
+                        "AssociatePublicIpAddress": true,
+                        "SubnetId": {
+                            "Ref": "PublicSubnet1"
+                        },
+                        "GroupSet": [
+                            {
+                                "Ref": "CommandHostSecurityGroup"
+                            },
+                            {
+                                "Ref": "HTTPAccess"
+                            }
+                        ]
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": { "Fn::Join": [ "",[
+                        "#!/bin/bash\n",
+                        "sudo yum -y update\n",
+                        "sudo amazon-linux-extras install epel -y\n",
+                        "sudo yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm\n",
+                        "sudo systemctl reboot\n",
+                        "sudo yum install -y httpd\n",
+                        "sudo systemctl start httpd\n",
+                        "sudo systemctl enable httpd\n",
+                        "sudo yum install ansible -y\n",
+                        "sudo ansible-galaxy collection install ansible.posix\n",
+                        "sudo yum -y install putty\n",
+                        "sudo yum -y install vim bash-completion\n"
+                        ]]
+                    }
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Bastion Host"
+                    }
+                ]
+            }
+        },
+        "BastionHost2": {
+            "Type": "AWS::EC2::Instance",
+            "DependsOn": [
+                "PublicSubnet2",
+                "CommandHostSecurityGroup",
+                "AttachGateway"
+            ],
+            "Properties": {
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "ImageId": {
+                    "Ref": "AmazonLinuxAMIID"
+                },
+                "InstanceType": "t2.micro",
+                "NetworkInterfaces": [
+                    {
+                        "DeviceIndex": "0",
+                        "AssociatePublicIpAddress": true,
+                        "SubnetId": {
+                            "Ref": "PublicSubnet2"
+                        },
+                        "GroupSet": [
+                            {
+                                "Ref": "CommandHostSecurityGroup"
+                            },
+                            {
+                                "Ref": "HTTPAccess"
+                            }
+                        ]
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": { "Fn::Join": [ "",[
+                        "#!/bin/bash\n",
+                        "sudo yum -y update\n",
+                        "sudo amazon-linux-extras install epel -y\n",
+                        "sudo yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm\n",
+                        "sudo systemctl reboot\n",
+                        "sudo yum install -y httpd\n",
+                        "sudo systemctl start httpd\n",
+                        "sudo systemctl enable httpd\n",
+                        "sudo yum install ansible -y\n",
+                        "sudo ansible-galaxy collection install ansible.posix\n",
+                        "sudo yum -y install putty\n",
+                        "sudo yum -y install vim bash-completion\n"
+                        ]]
+                    }
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Bastion Host2"
+                    }
+                ]
+            }
+        },
+        "WebServer": {
+            "Type": "AWS::EC2::Instance",
+            "DependsOn": [
+                "PrivateSubnet1",
+                "CommandHostSecurityGroup",
+                "HTTPAccess",
+                "AttachGateway"
+            ],
+            "Properties": {
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "ImageId": {
+                    "Ref": "AmazonLinuxAMIID"
+                },
+                "InstanceType": "t2.micro",
+                "NetworkInterfaces": [
+                    {
+                        "DeviceIndex": "0",
+                        "AssociatePublicIpAddress": true,
+                        "SubnetId": {
+                            "Ref": "PrivateSubnet1"
+                        },
+                        "GroupSet": [
+                            {
+                                "Ref": "HTTPAccess"
+                            },
+                            {
+                                "Ref": "CommandHostSecurityGroup"
+                            }
+                        ]
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": { "Fn::Join": [ "",[
+                        "#!/bin/bash\n",
+                        "sudo yum -y update\n",
+                        "sudo amazon-linux-extras install epel -y\n",
+                        "sudo yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm\n",
+                        "sudo systemctl reboot\n",
+                        "sudo yum install -y httpd\n",
+                        "sudo systemctl start httpd\n",
+                        "sudo systemctl enable httpd\n",
+                        "sudo rpm -ivh http://repo.zabbix.com/zabbix/5.0/rhel/7/x86_64/zabbix-agent-5.0.3-1.el7.x86_64.rpm\n",
+                        "sudo yum localinstall http://repo.zabbix.com/zabbix/5.0/rhel/7/x86_64/zabbix-agent-5.0.3-1.el7.x86_64.rpm\n"]]
+                    }
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Web Server"
+                    }
+                ]
+            }
+        },
+        "WebServer2": {
+            "Type": "AWS::EC2::Instance",
+            "DependsOn": [
+                "PrivateSubnet2",
+                "CommandHostSecurityGroup",
+                "HTTPAccess",
+                "AttachGateway"
+            ],
+            "Properties": {
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "ImageId": {
+                    "Ref": "AmazonLinuxAMIID"
+                },
+                "InstanceType": "t2.micro",
+                "NetworkInterfaces": [
+                    {
+                        "DeviceIndex": "0",
+                        "AssociatePublicIpAddress": true,
+                        "SubnetId": {
+                            "Ref": "PrivateSubnet2"
+                        },
+                        "GroupSet": [
+                            {
+                                "Ref": "HTTPAccess"
+                            },
+                            {
+                                "Ref": "CommandHostSecurityGroup"
+                            }
+                        ]
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": { "Fn::Join": [ "",[
+                        "#!/bin/bash\n",
+                        "sudo yum -y update\n",
+                        "sudo amazon-linux-extras install epel -y\n",
+                        "sudo yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm\n",
+                        "sudo systemctl reboot\n",
+                        "sudo yum install -y httpd\n",
+                        "sudo systemctl start httpd\n",
+                        "sudo systemctl enable httpd\n",
+                        "sudo rpm -ivh http://repo.zabbix.com/zabbix/5.0/rhel/7/x86_64/zabbix-agent-5.0.3-1.el7.x86_64.rpm\n",
+                        "sudo yum localinstall http://repo.zabbix.com/zabbix/5.0/rhel/7/x86_64/zabbix-agent-5.0.3-1.el7.x86_64.rpm\n"]]
+                    }
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Web Server2"
+                    }
+                ]
+            }
+        },
+        "DBEC2SecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Condition" : "Is-EC2-VPC",
+            "Properties" : {
+              "GroupDescription": "Open database for access",
+              "SecurityGroupIngress" : [{
+                "IpProtocol" : "tcp",
+                "FromPort" : "3306",
+                "ToPort" : "3306",
+                "SourceSecurityGroupName" : { "Ref" : "EC2SecurityGroup" }
+              }]
+            }
+        },
+        "DBSubnetGroup": {
+            "Type": "AWS::RDS::DBSubnetGroup",
+            "Properties": {
+              "DBSubnetGroupDescription": "SubnetGroup for MySQL RDS",
+              "DBSubnetGroupName": "DBSubnetGroup",
+              "SubnetIds": [
+                  {"Ref": "PrivateSubnet3"},
+                  {"Ref": "PrivateSubnet4"}
+              ]
+            }
+        },
+        "DBSecurityGroup": {
+            "Type": "AWS::RDS::DBSecurityGroup",
+            "Condition" : "Is-EC2-Classic",
+            "Properties": {
+              "EC2VpcId" : { "Ref" : "VPC" },
+              "DBSecurityGroupIngress": {
+                "EC2SecurityGroupName": { "Ref": "EC2SecurityGroup" }
+              },
+              "GroupDescription": "database access"
+            }
+        },
+        "MasterRDS" : {
+            "Type" : "AWS::RDS::DBInstance",
+            "Properties" : {
+              "DBName" : { "Ref" : "DBName" },
+              "AllocatedStorage" : { "Ref" : "DBAllocatedStorage" },
+              "DBInstanceClass" : { "Ref" : "DBInstanceClass" },
+              "Engine" : "MySQL",
+              "MasterUsername" : { "Ref" : "DBUser" },
+              "MasterUserPassword" : { "Ref" : "DBPassword" },
+              "AvailabilityZone": {
+                "Fn::Select": [
+                    "0",
+                    {
+                        "Fn::GetAZs": {
+                            "Ref": "AWS::Region"
+                        }
+                    }
+                ]
+            },
+              "Tags" : [{ "Key"  : "Name", "Value" : "Master RDS" }],
+              "VPCSecurityGroups": { "Fn::If" : [ "Is-EC2-VPC", [ { "Fn::GetAtt": [ "DBEC2SecurityGroup", "GroupId" ] } ], { "Ref" : "AWS::NoValue"}]},
+              "DBSecurityGroups": { "Fn::If" : [ "Is-EC2-Classic", [ { "Ref": "DBSecurityGroup" } ], { "Ref" : "AWS::NoValue"}]}
+            },
+            "DeletionPolicy" : "Snapshot"
+        },
+      
+        "ReplicaRDS" : {
+            "Type" : "AWS::RDS::DBInstance",
+            "Properties" : {
+              "SourceDBInstanceIdentifier" : { "Ref" : "MasterRDS" },
+              "DBInstanceClass" : { "Ref" : "DBInstanceClass" },
+              "AvailabilityZone": {
+                "Fn::Select": [
+                    "2",
+                    {
+                        "Fn::GetAZs": {
+                            "Ref": "AWS::Region"
+                        }
+                    }
+                ]
+            },
+              "Tags" : [{ "Key"  : "Name", "Value" : "Replica RDS" }]
+            }
+        }
+    },      
+    "Outputs": {
+        "AMIID": {
+            "Value": {
+                "Ref": "AmazonLinuxAMIID"
+            }
+        },
+        "COMMANDHOSTIP": {
+            "Value": {
+                "Fn::Sub": "${BastionHost.PublicIp}"
+            }
+        },
+        "KEYNAME": {
+            "Value": {
+                "Ref": "KeyName"
+            }
+        },
+        "HTTPACCESS": {
+            "Value": {
+                "Ref": "HTTPAccess"
+            }
+        },
+        "SUBNETID": {
+            "Value": {
+                "Ref": "PublicSubnet1"
+               }
+        },
+        "EC2Platform" : {
+        "Description" : "Platform in which this stack is deployed",
+        "Value" : { "Fn::If" : [ "Is-EC2-VPC", "EC2-VPC", "EC2-Classic" ]}
+        },
+  
+        "MasterJDBCConnectionString": {
+        "Description" : "JDBC connection string for the master database",
+        "Value" : { "Fn::Join": [ "", [ "jdbc:mysql://",
+                                        { "Fn::GetAtt": [ "MasterRDS", "Endpoint.Address" ] },
+                                        ":",
+                                        { "Fn::GetAtt": [ "MasterRDS", "Endpoint.Port" ] },
+                                        "/",
+                                        { "Ref": "DBName" }]]}
+        },
+        "ReplicaJDBCConnectionString": {
+        "Description" : "JDBC connection string for the replica database",
+        "Value" : { "Fn::Join": [ "", [ "jdbc:mysql://",
+                                        { "Fn::GetAtt": [ "ReplicaRDS", "Endpoint.Address" ] },
+                                        ":",
+                                        { "Fn::GetAtt": [ "ReplicaRDS", "Endpoint.Port" ] },
+                                        "/",
+                                        { "Ref": "DBName" }]]}
+        }
+    }
+}
